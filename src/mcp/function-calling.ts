@@ -8,6 +8,9 @@
 import { FunctionDefinition, FunctionCall } from '../ai/interfaces/provider';
 import { mcpClient, MCPRequest, MCPResponse } from './client';
 import { logger, logEmoji } from '../utils/logger';
+import { SLACK_FUNCTIONS, handleSlackFunctionCall } from './slack-functions';
+import { initializeFeatures } from '../slack/features';
+import { app } from '../slack/app';
 
 /**
  * Call Agent function definition
@@ -135,12 +138,24 @@ export const AVAILABLE_FUNCTIONS: FunctionDefinition[] = [
     GET_SALES_DATA_FUNCTION,
     GET_USER_INFO_FUNCTION,
     CREATE_TICKET_FUNCTION,
+    ...SLACK_FUNCTIONS,
 ];
+
+/**
+ * Initialize the function calling system
+ */
+export function initializeFunctionCalling(): void {
+    // Initialize Slack features
+    initializeFeatures(app);
+
+    logger.info(`${logEmoji.mcp} Function calling system initialized with ${AVAILABLE_FUNCTIONS.length} available functions`);
+}
 
 /**
  * Function call handler
  * 
- * This function handles function calls from the AI and executes them on the MCP server.
+ * This function handles function calls from the AI and executes them on the MCP server
+ * or routes them to the appropriate handler.
  * 
  * @param functionCall The function call from the AI
  * @returns Promise resolving to the result of the function call
@@ -152,6 +167,12 @@ export async function handleFunctionCall(functionCall: FunctionCall): Promise<an
         // Handle the callAgent function
         if (functionCall.name === 'callAgent') {
             return handleCallAgentFunction(functionCall);
+        }
+
+        // Check if this is a Slack function
+        const isSlackFunction = SLACK_FUNCTIONS.some(fn => fn.name === functionCall.name);
+        if (isSlackFunction) {
+            return handleSlackFunctionCall(functionCall);
         }
 
         // Handle other functions by mapping them to callAgent
@@ -258,10 +279,58 @@ export function formatFunctionCallResult(functionName: string, result: any): str
     try {
         // Format error results
         if (result && result.error) {
-            return `Function ${functionName} failed: ${result.error}`;
+            return `Error executing function ${functionName}: ${result.error}`;
         }
 
-        // Format success results
+        // Format success results with a more user-friendly message
+        let userFriendlyMessage = '';
+
+        // Add a user-friendly message based on the function name and result
+        if (result && result.success) {
+            switch (functionName) {
+                case 'createChannel':
+                    userFriendlyMessage = `I've created the channel #${result.channelName} for you.`;
+                    break;
+                case 'inviteToChannel':
+                    userFriendlyMessage = `I've invited ${result.invitedUsers?.length || 0} user(s) to the channel.`;
+                    break;
+                case 'archiveChannel':
+                    userFriendlyMessage = `I've archived the channel as requested.`;
+                    break;
+                case 'sendMessage':
+                    userFriendlyMessage = `I've sent your message to the channel.`;
+                    break;
+                case 'sendDirectMessage':
+                    userFriendlyMessage = `I've sent your direct message to the user.`;
+                    break;
+                case 'uploadFile':
+                    userFriendlyMessage = `I've uploaded the file ${result.fileName || 'to the channel'}.`;
+                    break;
+                case 'addReaction':
+                    userFriendlyMessage = `I've added the ${result.reaction} reaction to the message.`;
+                    break;
+                case 'addReminder':
+                    userFriendlyMessage = `I've set a reminder for the user.`;
+                    break;
+                case 'createChannelAndInviteUsers':
+                    userFriendlyMessage = `I've created the channel #${result.channelName} and invited ${result.invitedUsers?.length || 0} user(s).`;
+                    break;
+                case 'sendMessageToMultipleChannels':
+                    userFriendlyMessage = `I've sent your message to ${result.successCount} channel(s).`;
+                    break;
+                default:
+                    // If the result has a message property, use that
+                    if (result.message) {
+                        userFriendlyMessage = result.message;
+                    } else {
+                        userFriendlyMessage = `I've successfully completed the ${functionName} action.`;
+                    }
+            }
+
+            // Add the user-friendly message to the result
+            result.message = userFriendlyMessage;
+        }
+
         return `Function ${functionName} result: ${JSON.stringify(result, null, 2)}`;
     } catch (error) {
         logger.error(`${logEmoji.error} Error formatting function call result`, { error });

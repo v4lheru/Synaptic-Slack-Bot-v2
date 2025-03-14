@@ -1,14 +1,34 @@
-# Synaptic Bridge - Multi-Provider AI Slack Bot
+# Synaptic Slack Bot v2 - Multi-Provider AI Slack Bot
 
 ## Project Overview
 
-Synaptic Bridge is an intelligent Slack bot that connects your team's conversations with powerful AI capabilities. It serves as a bridge between your Slack workspace and various AI models, allowing seamless access to AI assistance without leaving your communication platform.
+Synaptic Slack Bot v2 is an intelligent Slack bot that connects your team's conversations with powerful AI capabilities. It serves as a bridge between your Slack workspace and various AI models, allowing seamless access to AI assistance without leaving your communication platform.
 
 The bot leverages OpenRouter as a gateway to multiple AI service providers (including OpenAI, Anthropic, and others) and can make function calls to an MCP (Mission Control Platform) server to perform custom actions based on user requests.
 
-## Why Synaptic Bridge?
+## What's New in v2
 
-Traditional AI assistants often require users to switch contexts, leaving their workflow to access AI capabilities. Synaptic Bridge brings AI directly into your team's communication flow, enabling:
+Version 2 of Synaptic Slack Bot v2 introduces significant enhancements:
+
+- **Expanded Slack Permissions**: Utilizes a comprehensive set of Slack permissions to perform a wide range of actions
+- **Modular Feature Architecture**: Organized features into separate modules for better maintainability
+- **Enhanced Conversational Experience**: Improved response handling for both action requests and conversational queries
+- **Intelligent Response Formatting**: Automatically determines when to use function calls vs. direct responses
+- **User-Friendly Action Responses**: Provides clear, conversational confirmations when actions are performed
+
+### New Slack Capabilities
+
+The bot now supports:
+- Creating and managing channels
+- Sending messages to channels and users
+- Uploading and managing files
+- Adding reactions to messages
+- Setting reminders
+- And more!
+
+## Why Synaptic Slack Bot v2?
+
+Traditional AI assistants often require users to switch contexts, leaving their workflow to access AI capabilities. Synaptic Slack Bot v2 brings AI directly into your team's communication flow, enabling:
 
 - **Instant AI assistance** within Slack threads and channels
 - **Consistent AI access** across the organization with shared context
@@ -17,6 +37,7 @@ Traditional AI assistants often require users to switch contexts, leaving their 
 
 ## Use Cases
 
+- **Workspace Management**: Create channels, invite users, and manage Slack workspace directly
 - **Knowledge Base Queries**: Ask questions about company documentation, policies, or technical information
 - **Content Generation**: Create drafts, summaries, or creative content directly in Slack
 - **Data Analysis**: Request analysis of data shared in conversations
@@ -36,13 +57,15 @@ Traditional AI assistants often require users to switch contexts, leaving their 
 
 ## Technical Architecture
 
-Synaptic Bridge is built with a modular architecture that separates concerns and allows for easy extension:
+Synaptic Slack Bot v2 is built with a modular architecture that separates concerns and allows for easy extension:
 
 1. **Slack Integration Layer**: Handles all communication with the Slack API
-2. **AI Provider Layer**: Manages connections to AI services through OpenRouter
-3. **Context Management**: Maintains conversation history for coherent interactions
-4. **Function Calling System**: Enables the AI to trigger specific actions in your systems
-5. **Configuration Layer**: Provides flexible configuration options
+2. **Feature Modules**: Implements specific Slack capabilities (channels, messages, files, etc.)
+3. **AI Provider Layer**: Manages connections to AI services through OpenRouter
+4. **AI Actions Layer**: Provides a "brains" layer for understanding and executing user requests
+5. **Context Management**: Maintains conversation history for coherent interactions
+6. **Function Calling System**: Enables the AI to trigger specific actions in your systems
+7. **Configuration Layer**: Provides flexible configuration options
 
 ## Prerequisites
 
@@ -123,17 +146,20 @@ To deploy on Railway:
 src/
 ├── index.ts                # Main entry point
 ├── ai/                     # AI provider implementations
+│   ├── actions/            # AI action layer for executing requests
 │   ├── interfaces/         # Common interfaces
 │   ├── openrouter/         # OpenRouter implementation
 │   └── context/            # Conversation context management
 ├── slack/                  # Slack integration
 │   ├── app.ts              # Slack app configuration
 │   ├── events/             # Event handlers
+│   ├── features/           # Feature modules (channels, messages, etc.)
 │   ├── middleware/         # Middleware functions
 │   └── utils/              # Slack utilities
 ├── mcp/                    # MCP integration
 │   ├── client.ts           # MCP client
 │   ├── auth.ts             # Authentication
+│   ├── slack-functions.ts  # Slack-specific function definitions
 │   └── function-calling.ts # Function calling
 ├── config/                 # Configuration
 │   ├── environment.ts      # Environment variables
@@ -145,25 +171,28 @@ src/
 
 ## Interacting with the Bot
 
-Once deployed, you can interact with Synaptic Bridge in several ways:
+Once deployed, you can interact with Synaptic Slack Bot v2 in several ways:
 
 1. **Direct Messages**: Send a DM to the bot for private conversations
-2. **Mentions**: Mention the bot in a channel using `@Synaptic Bridge`
+2. **Mentions**: Mention the bot in a channel using `@Synaptic Slack Bot v2`
 3. **Threads**: The bot can participate in conversation threads
 
 Example interactions:
 
-- `@Synaptic Bridge What's the status of our server deployment?`
-- `@Synaptic Bridge Can you summarize this document for me? [document link]`
-- `@Synaptic Bridge Generate a weekly report based on this data: [data]`
+- `@Synaptic Slack Bot v2 create a channel called project-discussion`
+- `@Synaptic Slack Bot v2 send a message to #general saying Hello everyone!`
+- `@Synaptic Slack Bot v2 write a haiku about Slack`
+- `@Synaptic Slack Bot v2 add a thumbs-up reaction to the last message`
+- `@Synaptic Slack Bot v2 set a reminder for @user to review the PR in 2 hours`
 
 ## Extending Functionality
 
-Synaptic Bridge is designed to be extensible. You can:
+Synaptic Slack Bot v2 is designed to be extensible. You can:
 
 1. **Add Custom Functions**: Extend the function calling system to add new capabilities
 2. **Integrate New AI Providers**: Add support for additional AI providers
 3. **Customize Response Formatting**: Modify how responses are presented in Slack
+4. **Add New Feature Modules**: Implement additional Slack features
 
 See the `Instructions for LLM.md` file for detailed guidance on working with the AI integration.
 
@@ -179,7 +208,7 @@ npm test
 
 ## License
 
-ISC
+MIT
 
 ## Acknowledgments
 

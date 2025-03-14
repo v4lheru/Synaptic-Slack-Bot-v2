@@ -73,20 +73,67 @@ async function processMessageAndGenerateResponse(
             AVAILABLE_FUNCTIONS
         );
 
-        // Handle function calls if present
+        // Determine if this is a function call request or a regular conversation
         let functionResults: string[] = [];
+        let finalResponse = aiResponse.content;
+        let showFunctionResults = true;
+
         if (aiResponse.functionCalls && aiResponse.functionCalls.length > 0) {
+            // This is a function call request
             functionResults = await processFunctionCalls(aiResponse.functionCalls);
+
+            // Create a more conversational response based on function results
+            if (functionResults.length > 0) {
+                // Check if all function calls were successful
+                const allSuccessful = functionResults.every(result => !result.includes('Error executing function'));
+
+                if (allSuccessful) {
+                    // Extract success messages from function results
+                    const successMessages = functionResults.map(result => {
+                        // Extract the function name and result from the formatted string
+                        const match = result.match(/Function (\w+) result: (.*)/s);
+                        if (match) {
+                            const functionName = match[1];
+                            const functionResult = JSON.parse(match[2]);
+
+                            // Return a user-friendly message based on the function name and result
+                            if (functionResult.message) {
+                                return functionResult.message;
+                            } else if (functionResult.success) {
+                                return `I've successfully completed the ${functionName} action.`;
+                            }
+                        }
+                        return null;
+                    }).filter(Boolean);
+
+                    // Create a conversational response
+                    if (successMessages.length > 0) {
+                        finalResponse = successMessages.join("\n\n");
+
+                        // If the original AI response is not empty and not a default message, append it
+                        if (aiResponse.content &&
+                            aiResponse.content.trim() !== "" &&
+                            aiResponse.content !== "I don't have a response at this time.") {
+                            finalResponse += "\n\n" + aiResponse.content;
+                        }
+                    }
+                }
+            }
+        } else {
+            // This is a regular conversation, use the AI response directly
+            finalResponse = aiResponse.content;
+            // Don't show function results for regular conversations
+            showFunctionResults = false;
         }
 
-        // Update the thinking message with the AI response
+        // Update the thinking message with the final response
         await conversationUtils.updateThinkingMessageWithAIResponse(
             app,
             threadInfo,
             thinkingMessageTs,
-            aiResponse.content,
+            finalResponse,
             aiResponse.metadata,
-            functionResults
+            showFunctionResults ? functionResults : []
         );
     } catch (error) {
         logger.error(`${logEmoji.error} Error processing message and generating response`, { error });

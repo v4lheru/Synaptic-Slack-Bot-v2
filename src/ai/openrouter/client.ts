@@ -395,9 +395,9 @@ export class OpenRouterClient implements AIProvider {
                 }
             }
 
-            // Create the response
+            // Create the response with a fallback for empty content
             const aiResponse: AIResponse = {
-                content: message.content || '',
+                content: message.content || "I don't have a response at this time.",
                 functionCalls,
                 metadata: {
                     model: result.model,

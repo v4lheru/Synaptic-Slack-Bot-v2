@@ -411,8 +411,11 @@ export function aiResponseMessage(
     metadata?: Record<string, any>,
     functionResults?: string[]
 ): { blocks: Block[]; text: string } {
+    // Ensure content is not empty
+    const safeContent = content && content.trim() ? content : "I don't have a response at this time.";
+
     const blocks: Block[] = [
-        section(content),
+        section(safeContent),
     ];
 
     // Add function results if provided
@@ -420,9 +423,11 @@ export function aiResponseMessage(
         blocks.push(divider());
 
         for (const result of functionResults) {
-            blocks.push(
-                section(mrkdwn(`\`\`\`\n${result}\n\`\`\``)),
-            );
+            if (result && result.trim()) {
+                blocks.push(
+                    section(mrkdwn(`\`\`\`\n${result}\n\`\`\``)),
+                );
+            }
         }
     }
 
@@ -447,6 +452,6 @@ export function aiResponseMessage(
 
     return {
         blocks,
-        text: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
+        text: safeContent.substring(0, 100) + (safeContent.length > 100 ? '...' : ''),
     };
 }
