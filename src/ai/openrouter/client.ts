@@ -257,14 +257,17 @@ export class OpenRouterClient implements AIProvider {
                     essentialFunctions = functions.filter(fn =>
                         fn.name === 'createChannel' ||
                         fn.name === 'inviteToChannel' ||
-                        fn.name === 'createChannelAndInviteUsers'
+                        fn.name === 'createChannelAndInviteUsers' ||
+                        fn.name === 'sendMessage'  // Include sendMessage for potential follow-up
                     );
-                } else if (promptText.includes('message') || promptText.includes('send') || promptText.includes('post')) {
+                } else if (promptText.includes('message') || promptText.includes('send') || promptText.includes('post') || promptText.includes('welcome')) {
                     // For sending messages
                     essentialFunctions = functions.filter(fn =>
                         fn.name === 'sendMessage' ||
                         fn.name === 'sendDirectMessage' ||
-                        fn.name === 'searchChannels'
+                        fn.name === 'searchChannels' ||
+                        fn.name === 'createChannel' ||
+                        fn.name === 'inviteToChannel'
                     );
                 } else if (promptText.includes('search')) {
                     // For search operations
@@ -286,15 +289,39 @@ export class OpenRouterClient implements AIProvider {
                     );
                 }
 
+                // Check for multi-step workflows in the prompt
+                const hasMultiStepWorkflow =
+                    // Create channel and invite users
+                    (promptText.includes('create') && promptText.includes('channel') &&
+                        (promptText.includes('invite') || promptText.includes('add'))) ||
+                    // Create channel and send message
+                    (promptText.includes('create') && promptText.includes('channel') &&
+                        (promptText.includes('send') || promptText.includes('message') || promptText.includes('welcome')));
+
+                // If this is a multi-step workflow, ensure we include all necessary functions
+                if (hasMultiStepWorkflow) {
+                    // For multi-step workflows, include all relevant functions
+                    const workflowFunctions = functions.filter(fn =>
+                        ['createChannel', 'inviteToChannel', 'createChannelAndInviteUsers', 'sendMessage'].includes(fn.name)
+                    );
+
+                    // Add any workflow functions that aren't already included
+                    workflowFunctions.forEach(fn => {
+                        if (!essentialFunctions.some(ef => ef.name === fn.name)) {
+                            essentialFunctions.push(fn);
+                        }
+                    });
+                }
+
                 // If we couldn't determine specific functions, include a minimal set
                 if (essentialFunctions.length === 0) {
                     essentialFunctions = functions.filter(fn =>
-                        ['searchChannels', 'sendMessage'].includes(fn.name)
+                        ['searchChannels', 'sendMessage', 'createChannel', 'inviteToChannel'].includes(fn.name)
                     );
                 }
 
-                // Limit to at most 5 functions to reduce token usage
-                essentialFunctions = essentialFunctions.slice(0, 5);
+                // Limit to at most 8 functions to reduce token usage while ensuring we have enough for multi-step workflows
+                essentialFunctions = essentialFunctions.slice(0, 8);
             }
 
             const openRouterTools = essentialFunctions?.map(fn => ({

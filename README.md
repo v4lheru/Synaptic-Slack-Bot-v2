@@ -18,6 +18,17 @@ Version 2 of Synaptic Slack Bot v2 introduces significant enhancements:
 - **Comprehensive Slack API Integration**: Implements all major Slack API endpoints for maximum flexibility
 - **Slack-Native Formatting**: Ensures all responses use Slack's formatting syntax for optimal readability
 - **Token Usage Optimization**: Implements smart strategies to minimize token usage and reduce costs
+- **Advanced Function Chaining**: Seamlessly executes multi-step workflows with intelligent function sequencing
+
+### Latest Updates (v2.1)
+
+The latest update includes significant improvements to function chaining and Slack formatting:
+
+- **Enhanced Multi-step Workflow Detection**: Better recognition of complex user requests that require multiple actions
+- **Improved Function Chaining**: Fixed issues with sequential function execution for tasks like creating channels and sending welcome messages
+- **Comprehensive Workflow Analysis**: Smarter analysis of user requests to determine all required functions for multi-step tasks
+- **Strict Slack Formatting Compliance**: Strengthened formatting rules to ensure all responses use proper Slack markup
+- **Expanded Context Preservation**: Better preservation of original request context in multi-step workflows
 
 ### Token Usage Optimization
 
@@ -28,8 +39,9 @@ The bot includes several optimizations to minimize token usage and improve cost 
 - **Concise System Messages**: Uses compact system messages that maintain essential instructions while reducing token count
 - **Smart Function Selection for Multi-step Tasks**: Intelligently selects only the most relevant functions for follow-up requests (e.g., only including sendMessage after searchChannels)
 - **Efficient Data Handling**: Extracts and passes only essential information from function results to reduce token usage in multi-step workflows
+- **Intelligent Function Bundling**: Groups related functions for common workflows while maintaining token efficiency
 
-These optimizations significantly reduce token consumption, especially for complex multi-step workflows like creating meeting summaries, while maintaining full functionality.
+These optimizations significantly reduce token consumption, especially for complex multi-step workflows like creating meeting summaries or setting up new channels with welcome messages, while maintaining full functionality.
 
 ### New Slack Capabilities
 

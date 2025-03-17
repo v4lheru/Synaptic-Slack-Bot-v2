@@ -243,9 +243,17 @@ async function shouldContinueWorkflow(functionResults: any[], conversationHistor
         { first: 'searchChannels', next: 'sendMessage' },
         // Create channel followed by inviting users
         { first: 'createChannel', next: 'inviteToChannel' },
+        // Create channel followed by sending a message
+        { first: 'createChannel', next: 'sendMessage' },
+        // Invite to channel followed by sending a message
+        { first: 'inviteToChannel', next: 'sendMessage' },
+        // Create channel and invite users followed by sending a message
+        { first: 'createChannelAndInviteUsers', next: 'sendMessage' },
         // Any function call that might need a follow-up
         { first: 'searchChannels', next: null },
-        { first: 'createChannel', next: null }
+        { first: 'createChannel', next: null },
+        { first: 'inviteToChannel', next: null },
+        { first: 'createChannelAndInviteUsers', next: null }
     ];
 
     // Check if the last function call matches the first step of any workflow
@@ -274,12 +282,30 @@ async function shouldContinueWorkflow(functionResults: any[], conversationHistor
     const multiStepPhrases = [
         'then', 'after', 'next', 'finally', 'and',
         'post', 'send', 'share', 'create', 'invite',
-        'summary', 'summarize', 'channel', 'meeting'
+        'summary', 'summarize', 'channel', 'meeting',
+        'welcome'
     ];
 
     // Check for specific multi-step task patterns
     if (lastUserMessage.toLowerCase().includes('meeting') &&
         lastUserMessage.toLowerCase().includes('summary')) {
+        return true;
+    }
+
+    // Check for "create channel and invite" pattern
+    if (lastUserMessage.toLowerCase().includes('create') &&
+        lastUserMessage.toLowerCase().includes('channel') &&
+        (lastUserMessage.toLowerCase().includes('invite') ||
+            lastUserMessage.toLowerCase().includes('add'))) {
+        return true;
+    }
+
+    // Check for "create channel and send message" pattern
+    if (lastUserMessage.toLowerCase().includes('create') &&
+        lastUserMessage.toLowerCase().includes('channel') &&
+        (lastUserMessage.toLowerCase().includes('send') ||
+            lastUserMessage.toLowerCase().includes('message') ||
+            lastUserMessage.toLowerCase().includes('welcome'))) {
         return true;
     }
 
@@ -314,20 +340,114 @@ async function generateFollowUpResponse(
             return `${fr.name}: ${JSON.stringify(essentialResult)}`;
         }).join('; ');
 
-        const prompt = `Results: ${functionResultsText}. What's the next step?`;
+        // Extract the original user request from conversation history
+        const userMessages = conversationHistory
+            .filter((msg: any) => msg.role === 'user')
+            .map((msg: any) => typeof msg.content === 'string' ? msg.content : '');
 
-        // Add a concise system message to guide the AI
-        const systemMessage = {
-            role: 'system',
-            content: `Complete multi-step task. For meeting summaries: 1) Create summary from transcript, 2) Post to appropriate channel with sendMessage. Be concise, focus on decisions and action items. No explanations - just execute functions.`
-        };
+        const originalRequest = userMessages.length > 0 ? userMessages[userMessages.length - 1] : '';
+
+        // Create a more informative prompt that includes the original request
+        const prompt = `Original request: "${originalRequest}". Function results: ${functionResultsText}. What's the next step to complete the user's request?`;
+
+        // Create a system message based on the first function call
+        let systemContent = `Complete multi-step task. Be concise and execute the next logical function without explanations.
+
+CRITICAL FORMATTING INSTRUCTIONS:
+ALL responses MUST use Slack formatting, NOT Markdown. Format all responses using Slack syntax:
+
+*bold text* for emphasis
+_italic text_ for definitions
+~strikethrough~ when needed
+\`code snippets\` for HubSpot-specific terms
+- Use manual bullet points (not - or *)
+<URL|text> for links with custom text
+>text for quotes or important callouts
+
+SACROSANCT ONLY USE SLACK MARKUP - all responses must be formatted for Slack display only.
+
+only BOLD using ONE ASTERISK *TEXT*`;
+
+        if (functionResults.length > 0) {
+            const firstFunctionName = functionResults[0].name;
+
+            if (firstFunctionName === 'searchChannels') {
+                systemContent = `After finding channels, send a message to the appropriate channel. No explanations - just execute the sendMessage function.
+
+CRITICAL FORMATTING INSTRUCTIONS:
+ALL responses MUST use Slack formatting, NOT Markdown. Format all responses using Slack syntax:
+
+*bold text* for emphasis
+_italic text_ for definitions
+~strikethrough~ when needed
+\`code snippets\` for HubSpot-specific terms
+- Use manual bullet points (not - or *)
+<URL|text> for links with custom text
+>text for quotes or important callouts
+
+SACROSANCT ONLY USE SLACK MARKUP - all responses must be formatted for Slack display only.
+
+only BOLD using ONE ASTERISK *TEXT*`;
+            } else if (firstFunctionName === 'createChannel') {
+                systemContent = `After creating a channel, either invite users or send a welcome message. No explanations - just execute the next function.
+
+CRITICAL FORMATTING INSTRUCTIONS:
+ALL responses MUST use Slack formatting, NOT Markdown. Format all responses using Slack syntax:
+
+*bold text* for emphasis
+_italic text_ for definitions
+~strikethrough~ when needed
+\`code snippets\` for HubSpot-specific terms
+- Use manual bullet points (not - or *)
+<URL|text> for links with custom text
+>text for quotes or important callouts
+
+SACROSANCT ONLY USE SLACK MARKUP - all responses must be formatted for Slack display only.
+
+only BOLD using ONE ASTERISK *TEXT*`;
+            } else if (firstFunctionName === 'inviteToChannel') {
+                systemContent = `After inviting users to a channel, send a welcome message. No explanations - just execute the sendMessage function.
+
+CRITICAL FORMATTING INSTRUCTIONS:
+ALL responses MUST use Slack formatting, NOT Markdown. Format all responses using Slack syntax:
+
+*bold text* for emphasis
+_italic text_ for definitions
+~strikethrough~ when needed
+\`code snippets\` for HubSpot-specific terms
+- Use manual bullet points (not - or *)
+<URL|text> for links with custom text
+>text for quotes or important callouts
+
+SACROSANCT ONLY USE SLACK MARKUP - all responses must be formatted for Slack display only.
+
+only BOLD using ONE ASTERISK *TEXT*`;
+            } else if (firstFunctionName === 'createChannelAndInviteUsers') {
+                systemContent = `After creating a channel and inviting users, send a welcome message. No explanations - just execute the sendMessage function.
+
+CRITICAL FORMATTING INSTRUCTIONS:
+ALL responses MUST use Slack formatting, NOT Markdown. Format all responses using Slack syntax:
+
+*bold text* for emphasis
+_italic text_ for definitions
+~strikethrough~ when needed
+\`code snippets\` for HubSpot-specific terms
+- Use manual bullet points (not - or *)
+<URL|text> for links with custom text
+>text for quotes or important callouts
+
+SACROSANCT ONLY USE SLACK MARKUP - all responses must be formatted for Slack display only.
+
+only BOLD using ONE ASTERISK *TEXT*`;
+            }
+        }
 
         // Create a minimal conversation history with just the system message and user prompt
         // This significantly reduces token usage
         const updatedHistory: ConversationMessage[] = [
             {
                 role: 'system',
-                content: `Complete multi-step task. For meeting summaries: 1) Create summary from transcript, 2) Post to appropriate channel with sendMessage. Be concise, focus on decisions and action items. No explanations - just execute functions.`,
+                content: systemContent,
                 timestamp: new Date().toISOString()
             },
             {
@@ -340,11 +460,31 @@ async function generateFollowUpResponse(
         // Determine which functions to include based on the first function call
         let relevantFunctions = AVAILABLE_FUNCTIONS;
 
-        // If the first function was searchChannels, only include sendMessage for the follow-up
-        if (functionResults.length > 0 && functionResults[0].name === 'searchChannels') {
-            relevantFunctions = AVAILABLE_FUNCTIONS.filter(fn =>
-                fn.name === 'sendMessage'
-            );
+        // Determine which functions to include based on the first function call
+        if (functionResults.length > 0) {
+            const firstFunctionName = functionResults[0].name;
+
+            if (firstFunctionName === 'searchChannels') {
+                // After searching channels, we might want to send a message
+                relevantFunctions = AVAILABLE_FUNCTIONS.filter(fn =>
+                    fn.name === 'sendMessage'
+                );
+            } else if (firstFunctionName === 'createChannel') {
+                // After creating a channel, we might want to invite users or send a message
+                relevantFunctions = AVAILABLE_FUNCTIONS.filter(fn =>
+                    fn.name === 'inviteToChannel' || fn.name === 'sendMessage'
+                );
+            } else if (firstFunctionName === 'inviteToChannel') {
+                // After inviting users, we might want to send a welcome message
+                relevantFunctions = AVAILABLE_FUNCTIONS.filter(fn =>
+                    fn.name === 'sendMessage'
+                );
+            } else if (firstFunctionName === 'createChannelAndInviteUsers') {
+                // After creating a channel and inviting users, we might want to send a message
+                relevantFunctions = AVAILABLE_FUNCTIONS.filter(fn =>
+                    fn.name === 'sendMessage'
+                );
+            }
         }
 
         // Generate a response from the AI with only relevant functions

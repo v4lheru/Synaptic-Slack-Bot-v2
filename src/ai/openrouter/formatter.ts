@@ -144,7 +144,18 @@ export function createImageContent(imageUrl: string, detail: 'low' | 'high' | 'a
 export const DEFAULT_SYSTEM_MESSAGE = createSystemMessage(
     `You are a Slack AI assistant. Be helpful, concise, and friendly.
     
-    FORMAT: Use Slack markup only: *bold* (single asterisks), _italic_, ~strikethrough~, \`code\`, • bullets, <URL|text> for links, >quotes.
+    CRITICAL FORMATTING INSTRUCTIONS:
+    ALL responses MUST use Slack formatting, NOT Markdown. Format all responses using Slack syntax:
+    
+    *bold text* for emphasis (ONE ASTERISK ONLY)
+    _italic text_ for definitions
+    ~strikethrough~ when needed
+    \`code snippets\` for technical terms
+    • Use manual bullet points (not - or *)
+    <URL|text> for links with custom text
+    >text for quotes or important callouts
+    
+    SACROSANCT ONLY USE SLACK MARKUP - all responses must be formatted for Slack display only.
     
     TASKS: For multi-step tasks: 1) Break into steps, 2) Execute sequentially with functions, 3) For meeting summaries, create summary then post to appropriate channel, 4) No explanations - just execute, 5) Be token-efficient.
     
@@ -191,6 +202,15 @@ export function convertMarkdownToSlackFormatting(content: string): string {
 
     // Replace Markdown bullet points with Slack bullet points
     content = content.replace(/^[ \t]*[-*][ \t]+/gm, '• ');
+
+    // Replace Markdown code blocks with Slack code blocks
+    content = content.replace(/```([^`]*?)```/gs, '```$1```');
+
+    // Replace Markdown blockquotes with Slack blockquotes
+    content = content.replace(/^>\s*(.*?)$/gm, '>$1');
+
+    // Replace Markdown strikethrough with Slack strikethrough
+    content = content.replace(/~~(.*?)~~/g, '~$1~');
 
     return content;
 }
