@@ -151,6 +151,77 @@ export class MessageFeatures {
     }
 
     /**
+     * Send an ephemeral message (only visible to a specific user)
+     * 
+     * @param channelId The ID of the channel
+     * @param userId The ID of the user who will see the message
+     * @param text The message text
+     * @param blocks Optional Block Kit blocks
+     * @returns Promise resolving to the send result
+     */
+    async sendEphemeralMessage(channelId: string, userId: string, text: string, blocks?: any[]): Promise<any> {
+        try {
+            logger.info(`${logEmoji.slack} Sending ephemeral message to user: ${userId} in channel: ${channelId}`);
+            const result = await this.app.client.chat.postEphemeral({
+                channel: channelId,
+                user: userId,
+                text,
+                blocks
+            });
+            return result;
+        } catch (error) {
+            logger.error(`${logEmoji.error} Error sending ephemeral message to user: ${userId} in channel: ${channelId}`, { error });
+            throw error;
+        }
+    }
+
+    /**
+     * Schedule a message for future delivery
+     * 
+     * @param channelId The ID of the channel
+     * @param text The message text
+     * @param postAt Unix timestamp for when to send the message
+     * @param blocks Optional Block Kit blocks
+     * @returns Promise resolving to the schedule result
+     */
+    async scheduleMessage(channelId: string, text: string, postAt: number, blocks?: any[]): Promise<any> {
+        try {
+            logger.info(`${logEmoji.slack} Scheduling message in channel: ${channelId} for: ${new Date(postAt * 1000).toISOString()}`);
+            const result = await this.app.client.chat.scheduleMessage({
+                channel: channelId,
+                text,
+                post_at: postAt,
+                blocks
+            });
+            return result;
+        } catch (error) {
+            logger.error(`${logEmoji.error} Error scheduling message in channel: ${channelId}`, { error });
+            throw error;
+        }
+    }
+
+    /**
+     * Get a permalink to a message
+     * 
+     * @param channelId The ID of the channel
+     * @param messageTs The timestamp of the message
+     * @returns Promise resolving to the permalink result
+     */
+    async getMessagePermalink(channelId: string, messageTs: string): Promise<any> {
+        try {
+            logger.info(`${logEmoji.slack} Getting permalink for message: ${messageTs} in channel: ${channelId}`);
+            const result = await this.app.client.chat.getPermalink({
+                channel: channelId,
+                message_ts: messageTs
+            });
+            return result;
+        } catch (error) {
+            logger.error(`${logEmoji.error} Error getting permalink for message: ${messageTs} in channel: ${channelId}`, { error });
+            throw error;
+        }
+    }
+
+    /**
      * Get conversation history
      * 
      * @param channelId The ID of the channel

@@ -18,6 +18,27 @@ export class ChannelFeatures {
     }
 
     /**
+     * Get members of a channel
+     * 
+     * @param channelId The ID of the channel
+     * @param limit Maximum number of members to return per page
+     * @returns Promise resolving to the members result
+     */
+    async getChannelMembers(channelId: string, limit: number = 100): Promise<any> {
+        try {
+            logger.info(`${logEmoji.slack} Getting members for channel: ${channelId}`);
+            const result = await this.app.client.conversations.members({
+                channel: channelId,
+                limit
+            });
+            return result;
+        } catch (error) {
+            logger.error(`${logEmoji.error} Error getting members for channel: ${channelId}`, { error });
+            throw error;
+        }
+    }
+
+    /**
      * Join a public channel
      * 
      * @param channelId The ID of the channel to join
@@ -100,6 +121,33 @@ export class ChannelFeatures {
     }
 
     /**
+     * List channels in the workspace
+     * 
+     * @param limit Maximum number of channels to return
+     * @param excludeArchived Whether to exclude archived channels
+     * @param types Types of channels to include (public_channel, private_channel, mpim, im)
+     * @returns Promise resolving to the list of channels
+     */
+    async listChannels(
+        limit: number = 100,
+        excludeArchived: boolean = true,
+        types: string = 'public_channel,private_channel'
+    ): Promise<any> {
+        try {
+            logger.info(`${logEmoji.slack} Listing channels with types: ${types}`);
+            const result = await this.app.client.conversations.list({
+                limit,
+                exclude_archived: excludeArchived,
+                types
+            });
+            return result;
+        } catch (error) {
+            logger.error(`${logEmoji.error} Error listing channels`, { error });
+            throw error;
+        }
+    }
+
+    /**
      * List public channels in the workspace
      * 
      * @param limit Maximum number of channels to return
@@ -107,18 +155,7 @@ export class ChannelFeatures {
      * @returns Promise resolving to the list of channels
      */
     async listPublicChannels(limit: number = 100, excludeArchived: boolean = true): Promise<any> {
-        try {
-            logger.info(`${logEmoji.slack} Listing public channels`);
-            const result = await this.app.client.conversations.list({
-                limit,
-                exclude_archived: excludeArchived,
-                types: 'public_channel'
-            });
-            return result;
-        } catch (error) {
-            logger.error(`${logEmoji.error} Error listing public channels`, { error });
-            throw error;
-        }
+        return this.listChannels(limit, excludeArchived, 'public_channel');
     }
 
     /**

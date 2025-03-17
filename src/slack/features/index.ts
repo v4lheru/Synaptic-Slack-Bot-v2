@@ -11,6 +11,10 @@ import { DirectMessageFeatures } from './direct-messages';
 import { FileFeatures } from './files';
 import { ReactionFeatures } from './reactions';
 import { ReminderFeatures } from './reminders';
+import { UserFeatures } from './users';
+import { AdminFeatures } from './admin';
+import { SearchFeatures } from './search';
+import { BookmarkFeatures } from './bookmarks';
 
 /**
  * SlackFeatures class that provides access to all feature classes
@@ -22,6 +26,10 @@ export class SlackFeatures {
     public files: FileFeatures;
     public reactions: ReactionFeatures;
     public reminders: ReminderFeatures;
+    public users: UserFeatures;
+    public admin: AdminFeatures;
+    public search: SearchFeatures;
+    public bookmarks: BookmarkFeatures;
 
     /**
      * Create a new SlackFeatures instance
@@ -35,6 +43,10 @@ export class SlackFeatures {
         this.files = new FileFeatures(app);
         this.reactions = new ReactionFeatures(app);
         this.reminders = new ReminderFeatures(app);
+        this.users = new UserFeatures(app);
+        this.admin = new AdminFeatures(app);
+        this.search = new SearchFeatures(app);
+        this.bookmarks = new BookmarkFeatures(app);
     }
 }
 
@@ -45,6 +57,10 @@ export { DirectMessageFeatures } from './direct-messages';
 export { FileFeatures } from './files';
 export { ReactionFeatures } from './reactions';
 export { ReminderFeatures } from './reminders';
+export { UserFeatures } from './users';
+export { AdminFeatures } from './admin';
+export { SearchFeatures } from './search';
+export { BookmarkFeatures } from './bookmarks';
 
 // Create and export a singleton instance
 let slackFeatures: SlackFeatures | null = null;
