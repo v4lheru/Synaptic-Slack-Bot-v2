@@ -75,11 +75,30 @@ async function initializeComponents() {
         await initializeComponents();
 
         // Start the Slack app
-        const port = Number(process.env.PORT) || 3000;
+        const port = Number(process.env.PORT) || 3001;
         await app.start(port);
         logger.info(`${logEmoji.info} ⚡️ Multi-Provider AI Slack Bot is running on port ${port}!`);
         logger.info(`${logEmoji.info} Environment: ${env.NODE_ENV}`);
         logger.info(`${logEmoji.info} Log level: ${env.LOG_LEVEL}`);
+
+        // Create a separate HTTP server for the API endpoints
+        const express = require('express');
+        const bodyParser = require('body-parser');
+        const { processApiMessage } = require('./api/handler');
+
+        const apiServer = express();
+        const apiPort = 3002; // Use a different port for the API server
+
+        // Middleware
+        apiServer.use(bodyParser.json());
+
+        // API endpoint
+        apiServer.post('/api/process-message', processApiMessage);
+
+        // Start the API server
+        apiServer.listen(apiPort, () => {
+            logger.info(`${logEmoji.api} API server is running on port ${apiPort}!`);
+        });
     } catch (error) {
         logger.error(`${logEmoji.error} Unable to start app`, { error });
         process.exit(1);

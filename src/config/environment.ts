@@ -24,6 +24,11 @@ export interface EnvironmentVariables {
     MCP_SERVER_URL: string;
     MCP_AUTH_TOKEN: string;
 
+    // API Configuration
+    API_KEY: string;
+    ENABLE_API_ENDPOINT: boolean;
+    API_RATE_LIMIT: number;
+
     // App Configuration
     NODE_ENV: 'development' | 'production' | 'test';
     LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error';
@@ -33,6 +38,8 @@ export interface EnvironmentVariables {
 const DEFAULT_ENV = {
     NODE_ENV: 'development',
     LOG_LEVEL: 'info',
+    ENABLE_API_ENDPOINT: true,
+    API_RATE_LIMIT: 100, // 100 requests per minute
 } as const;
 
 // Required environment variables
@@ -75,6 +82,15 @@ export function loadEnvironment(): EnvironmentVariables {
         // MCP
         MCP_SERVER_URL: process.env.MCP_SERVER_URL || 'http://localhost:3000',
         MCP_AUTH_TOKEN: process.env.MCP_AUTH_TOKEN || '',
+
+        // API Configuration
+        API_KEY: process.env.API_KEY || '',
+        ENABLE_API_ENDPOINT: process.env.ENABLE_API_ENDPOINT ?
+            process.env.ENABLE_API_ENDPOINT.toLowerCase() === 'true' :
+            DEFAULT_ENV.ENABLE_API_ENDPOINT,
+        API_RATE_LIMIT: process.env.API_RATE_LIMIT ?
+            parseInt(process.env.API_RATE_LIMIT, 10) :
+            DEFAULT_ENV.API_RATE_LIMIT,
 
         // App Configuration
         NODE_ENV: (process.env.NODE_ENV as EnvironmentVariables['NODE_ENV']) || DEFAULT_ENV.NODE_ENV,

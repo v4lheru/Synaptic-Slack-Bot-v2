@@ -33,6 +33,7 @@ export const app = new App({
     signingSecret: env.SLACK_SIGNING_SECRET,
     socketMode: true,
     appToken: env.SLACK_APP_TOKEN,
+    port: 3003, // Use a different port for the socket mode
     logLevel: getBoltLogLevel(),
     logger: {
         debug: (...msgs) => logger.debug(msgs.join(' ')),
@@ -50,6 +51,15 @@ export const app = new App({
             handler: (req, res) => {
                 res.writeHead(200);
                 res.end('Health check: OK');
+            },
+        },
+        {
+            path: '/api/process-message',
+            method: ['POST'],
+            handler: (req, res) => {
+                // Import the API handler dynamically to avoid circular dependencies
+                const { processApiMessage } = require('../api/handler');
+                processApiMessage(req, res);
             },
         },
     ],

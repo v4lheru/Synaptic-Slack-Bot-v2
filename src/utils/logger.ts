@@ -90,4 +90,5 @@ export const logEmoji = {
     slack: '🤖',
     ai: '🧠',
     mcp: '🔌',
+    api: '🌐', // HTTP API endpoint
 };

@@ -132,6 +132,33 @@ Traditional AI assistants often require users to switch contexts, leaving their 
 - Rich message formatting with Block Kit
 - Comprehensive error handling and logging
 - Configurable model selection based on task requirements
+- HTTP API endpoint for external automation tools
+
+## HTTP API for Automation
+
+Synaptic Slack Bot v2 now includes an HTTP API endpoint that allows external automation tools like n8n to send natural language instructions to the bot. The bot processes these instructions just like it would process messages in Slack, executing functions and returning results.
+
+Key features of the HTTP API:
+
+- **Simple Integration**: Send natural language instructions via HTTP POST requests
+- **Authentication**: Secure API key authentication
+- **Rate Limiting**: Configurable rate limiting to prevent abuse
+- **Detailed Responses**: Structured JSON responses with function results
+- **n8n Integration**: Easy integration with n8n workflows
+
+Example API request:
+
+```http
+POST /api/process-message
+Content-Type: application/json
+X-API-Key: your-api-key-here
+
+{
+  "message": "Create a channel called project-discussion, invite @user1 and @user2, and send a welcome message"
+}
+```
+
+For detailed API documentation, see the [API.md](API.md) file.
 
 ## Technical Architecture
 
@@ -179,6 +206,11 @@ Synaptic Slack Bot v2 is built with a modular architecture that separates concer
    # MCP Configuration
    MCP_SERVER_URL=your-mcp-server-url
    MCP_AUTH_TOKEN=your-mcp-auth-token
+
+   # API Configuration
+   API_KEY=your-api-key-here
+   ENABLE_API_ENDPOINT=true
+   API_RATE_LIMIT=100
 
    # App Configuration
    NODE_ENV=development
@@ -228,6 +260,9 @@ src/
 │   ├── interfaces/         # Common interfaces
 │   ├── openrouter/         # OpenRouter implementation
 │   └── context/            # Conversation context management
+├── api/                    # HTTP API implementation
+│   ├── handler.ts          # API request handler
+│   └── types.ts            # API type definitions
 ├── slack/                  # Slack integration
 │   ├── app.ts              # Slack app configuration
 │   ├── events/             # Event handlers
