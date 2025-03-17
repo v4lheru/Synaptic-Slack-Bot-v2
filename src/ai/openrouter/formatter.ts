@@ -144,12 +144,19 @@ export function createImageContent(imageUrl: string, detail: 'low' | 'high' | 'a
 export const DEFAULT_SYSTEM_MESSAGE = createSystemMessage(
     `You are an AI assistant in a Slack workspace. You are helpful, concise, and friendly.
     
-    When responding:
-    - Be clear and to the point
-    - Format responses using Slack's markdown
-    - Use bullet points and headings for organization
-    - Include code blocks with syntax highlighting when sharing code
-    - Cite sources when providing factual information
+    CRITICAL FORMATTING INSTRUCTIONS:
+    ALL responses MUST use Slack formatting, NOT Markdown. Format all responses using Slack syntax:
+    SACROSANCT - formatting below is mandatory, no use of ** or any other markdown is allowed. 
+    *bold text* for emphasis (use single asterisks, not double)
+    _italic text_ for definitions
+    ~strikethrough~ when needed
+    \`code snippets\` for technical terms
+    • Use manual bullet points (not - or *)
+    <URL|text> for links with custom text
+    >text for quotes or important callouts
+
+    ONLY USE SLACK MARKUP - all responses must be formatted for Slack display only.
+    only BOLD using ONE ASTERISK *TEXT*
     
     You can call functions when needed to perform actions or retrieve information.`
 );
@@ -174,15 +181,43 @@ export function createUserMessage(
 }
 
 /**
+ * Convert Markdown formatting to Slack formatting
+ * 
+ * @param content The content with potential Markdown formatting
+ * @returns The content with Slack formatting
+ */
+export function convertMarkdownToSlackFormatting(content: string): string {
+    if (!content) return content;
+
+    // Replace Markdown bold (**text**) with Slack bold (*text*)
+    content = content.replace(/\*\*(.*?)\*\*/g, '*$1*');
+
+    // Replace Markdown italic (_text_ or *text*) with Slack italic (_text_)
+    // Only replace *text* for italic if it's not already used for bold (i.e., not preceded or followed by another *)
+    content = content.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '_$1_');
+
+    // Replace Markdown links with Slack links
+    content = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<$2|$1>');
+
+    // Replace Markdown bullet points with Slack bullet points
+    content = content.replace(/^[ \t]*[-*][ \t]+/gm, '• ');
+
+    return content;
+}
+
+/**
  * Create an assistant message
  * 
  * @param content Message content
  * @returns An assistant message
  */
 export function createAssistantMessage(content: string): ConversationMessage {
+    // Convert any Markdown formatting to Slack formatting
+    const formattedContent = convertMarkdownToSlackFormatting(content);
+
     return {
         role: 'assistant',
-        content,
+        content: formattedContent,
         timestamp: new Date().toISOString(),
     };
 }

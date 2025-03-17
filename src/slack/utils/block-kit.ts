@@ -411,8 +411,14 @@ export function aiResponseMessage(
     metadata?: Record<string, any>,
     functionResults?: string[]
 ): { blocks: Block[]; text: string } {
+    // Import the convertMarkdownToSlackFormatting function
+    const { convertMarkdownToSlackFormatting } = require('../../ai/openrouter/formatter');
+
     // Ensure content is not empty
-    const safeContent = content && content.trim() ? content : "I don't have a response at this time.";
+    let safeContent = content && content.trim() ? content : "I don't have a response at this time.";
+
+    // Convert any Markdown formatting to Slack formatting
+    safeContent = convertMarkdownToSlackFormatting(safeContent);
 
     const blocks: Block[] = [
         section(safeContent),

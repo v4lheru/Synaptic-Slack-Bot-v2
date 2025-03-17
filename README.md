@@ -15,6 +15,8 @@ Version 2 of Synaptic Slack Bot v2 introduces significant enhancements:
 - **Enhanced Conversational Experience**: Improved response handling for both action requests and conversational queries
 - **Intelligent Response Formatting**: Automatically determines when to use function calls vs. direct responses
 - **User-Friendly Action Responses**: Provides clear, conversational confirmations when actions are performed
+- **Comprehensive Slack API Integration**: Implements all major Slack API endpoints for maximum flexibility
+- **Slack-Native Formatting**: Ensures all responses use Slack's formatting syntax for optimal readability
 
 ### New Slack Capabilities
 
@@ -24,7 +26,58 @@ The bot now supports:
 - Uploading and managing files
 - Adding reactions to messages
 - Setting reminders
+- Searching messages and channels
+- Managing users and workspace
+- Working with bookmarks
+- Scheduling messages
+- Getting message permalinks
 - And more!
+
+### Slack API Endpoints
+
+The bot implements a comprehensive set of Slack API endpoints:
+
+| Category                   | Endpoint                        | Purpose                                              |
+| -------------------------- | ------------------------------- | ---------------------------------------------------- |
+| **Conversations/Channels** | `conversations.list`            | Get all channels to find the right one to post in    |
+|                            | `conversations.history`         | Fetch channel history to understand context          |
+|                            | `conversations.info`            | Get details about a specific channel                 |
+|                            | `conversations.create`          | Create new channels when needed                      |
+|                            | `conversations.open`            | Open DMs with users                                  |
+|                            | `conversations.members`         | See who's in a channel                               |
+|                            | `conversations.join`            | Join channels the bot needs to post in               |
+| **Messages**               | `chat.postMessage`              | Post messages to channels                            |
+|                            | `chat.postEphemeral`            | Send private messages only visible to specific users |
+|                            | `chat.update`                   | Edit previously sent messages                        |
+|                            | `chat.scheduleMessage`          | Schedule messages for future delivery                |
+|                            | `chat.getPermalink`             | Get permalinks to share messages                     |
+| **Users**                  | `users.list`                    | Get all users in the workspace                       |
+|                            | `users.info`                    | Get details about specific users                     |
+|                            | `users.lookupByEmail`           | Find users by email address                          |
+| **Admin**                  | `admin.conversations.invite`    | Invite users to channels                             |
+|                            | `admin.users.invite`            | Invite new users to workspace                        |
+|                            | `admin.users.assign`            | Add users to workspaces                              |
+|                            | `admin.conversations.search`    | Find specific channels                               |
+|                            | `admin.conversations.archive`   | Archive old channels                                 |
+|                            | `admin.conversations.unarchive` | Restore archived channels                            |
+| **Search**                 | `search.messages`               | Search messages to find context or information       |
+| **Files**                  | `files.upload`                  | Upload files to channels                             |
+| **Bookmarks**              | `bookmarks.add`                 | Add important links as bookmarks                     |
+|                            | `bookmarks.list`                | Get existing bookmarks                               |
+
+### Slack-Native Formatting
+
+The bot ensures all responses use Slack's native formatting syntax rather than Markdown:
+
+- *bold text* (single asterisks) for emphasis
+- _italic text_ for definitions
+- ~strikethrough~ when needed
+- `code snippets` for technical terms
+- • Manual bullet points
+- <URL|text> for links with custom text
+- >text for quotes or important callouts
+
+This ensures optimal readability and consistent formatting in Slack messages.
 
 ## Why Synaptic Slack Bot v2?
 

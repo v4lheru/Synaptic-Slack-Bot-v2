@@ -395,9 +395,18 @@ export class OpenRouterClient implements AIProvider {
                 }
             }
 
-            // Create the response with a fallback for empty content
+            // Import the convertMarkdownToSlackFormatting function
+            const { convertMarkdownToSlackFormatting } = require('./formatter');
+
+            // Get the content with a fallback for empty content
+            let content = message.content || "I don't have a response at this time.";
+
+            // Convert any Markdown formatting to Slack formatting
+            content = convertMarkdownToSlackFormatting(content);
+
+            // Create the response
             const aiResponse: AIResponse = {
-                content: message.content || "I don't have a response at this time.",
+                content,
                 functionCalls,
                 metadata: {
                     model: result.model,
