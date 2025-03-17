@@ -17,6 +17,19 @@ Version 2 of Synaptic Slack Bot v2 introduces significant enhancements:
 - **User-Friendly Action Responses**: Provides clear, conversational confirmations when actions are performed
 - **Comprehensive Slack API Integration**: Implements all major Slack API endpoints for maximum flexibility
 - **Slack-Native Formatting**: Ensures all responses use Slack's formatting syntax for optimal readability
+- **Token Usage Optimization**: Implements smart strategies to minimize token usage and reduce costs
+
+### Token Usage Optimization
+
+The bot includes several optimizations to minimize token usage and improve cost efficiency:
+
+- **Selective Function Filtering**: Only sends relevant functions based on the user's prompt, rather than sending all function definitions with every request
+- **Minimal Conversation History**: Only includes essential messages (system message and current user message) in the conversation context
+- **Concise System Messages**: Uses compact system messages that maintain essential instructions while reducing token count
+- **Smart Function Selection for Multi-step Tasks**: Intelligently selects only the most relevant functions for follow-up requests (e.g., only including sendMessage after searchChannels)
+- **Efficient Data Handling**: Extracts and passes only essential information from function results to reduce token usage in multi-step workflows
+
+These optimizations significantly reduce token consumption, especially for complex multi-step workflows like creating meeting summaries, while maintaining full functionality.
 
 ### New Slack Capabilities
 

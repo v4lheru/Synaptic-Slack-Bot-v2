@@ -15,6 +15,7 @@
 
 import { App } from '@slack/bolt';
 import { logger, logEmoji } from '../../../utils/logger';
+import { callSlackApi } from '../../utils/api';
 
 export class MessageFeatures {
     private app: App;
@@ -35,12 +36,16 @@ export class MessageFeatures {
     async sendMessage(channelId: string, text: string, blocks?: any[], threadTs?: string): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Sending message to channel: ${channelId}`);
-            const result = await this.app.client.chat.postMessage({
-                channel: channelId,
-                text,
-                blocks,
-                thread_ts: threadTs
-            });
+            const result = await callSlackApi(
+                this.app,
+                'chat.postMessage',
+                {
+                    channel: channelId,
+                    text,
+                    blocks,
+                    thread_ts: threadTs
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error sending message to channel: ${channelId}`, { error });
@@ -67,13 +72,17 @@ export class MessageFeatures {
     ): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Sending custom message to channel: ${channelId}`);
-            const result = await this.app.client.chat.postMessage({
-                channel: channelId,
-                text,
-                blocks,
-                username,
-                icon_url: iconUrl
-            });
+            const result = await callSlackApi(
+                this.app,
+                'chat.postMessage',
+                {
+                    channel: channelId,
+                    text,
+                    blocks,
+                    username,
+                    icon_url: iconUrl
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error sending custom message to channel: ${channelId}`, { error });
@@ -92,11 +101,15 @@ export class MessageFeatures {
     async sendPublicMessage(channelId: string, text: string, blocks?: any[]): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Sending public message to channel: ${channelId}`);
-            const result = await this.app.client.chat.postMessage({
-                channel: channelId,
-                text,
-                blocks
-            });
+            const result = await callSlackApi(
+                this.app,
+                'chat.postMessage',
+                {
+                    channel: channelId,
+                    text,
+                    blocks
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error sending public message to channel: ${channelId}`, { error });
@@ -116,12 +129,16 @@ export class MessageFeatures {
     async updateMessage(channelId: string, ts: string, text: string, blocks?: any[]): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Updating message in channel: ${channelId}`);
-            const result = await this.app.client.chat.update({
-                channel: channelId,
-                ts,
-                text,
-                blocks
-            });
+            const result = await callSlackApi(
+                this.app,
+                'chat.update',
+                {
+                    channel: channelId,
+                    ts,
+                    text,
+                    blocks
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error updating message in channel: ${channelId}`, { error });
@@ -139,10 +156,14 @@ export class MessageFeatures {
     async deleteMessage(channelId: string, ts: string): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Deleting message in channel: ${channelId}`);
-            const result = await this.app.client.chat.delete({
-                channel: channelId,
-                ts
-            });
+            const result = await callSlackApi(
+                this.app,
+                'chat.delete',
+                {
+                    channel: channelId,
+                    ts
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error deleting message in channel: ${channelId}`, { error });
@@ -162,12 +183,16 @@ export class MessageFeatures {
     async sendEphemeralMessage(channelId: string, userId: string, text: string, blocks?: any[]): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Sending ephemeral message to user: ${userId} in channel: ${channelId}`);
-            const result = await this.app.client.chat.postEphemeral({
-                channel: channelId,
-                user: userId,
-                text,
-                blocks
-            });
+            const result = await callSlackApi(
+                this.app,
+                'chat.postEphemeral',
+                {
+                    channel: channelId,
+                    user: userId,
+                    text,
+                    blocks
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error sending ephemeral message to user: ${userId} in channel: ${channelId}`, { error });
@@ -187,12 +212,16 @@ export class MessageFeatures {
     async scheduleMessage(channelId: string, text: string, postAt: number, blocks?: any[]): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Scheduling message in channel: ${channelId} for: ${new Date(postAt * 1000).toISOString()}`);
-            const result = await this.app.client.chat.scheduleMessage({
-                channel: channelId,
-                text,
-                post_at: postAt,
-                blocks
-            });
+            const result = await callSlackApi(
+                this.app,
+                'chat.scheduleMessage',
+                {
+                    channel: channelId,
+                    text,
+                    post_at: postAt,
+                    blocks
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error scheduling message in channel: ${channelId}`, { error });
@@ -210,10 +239,14 @@ export class MessageFeatures {
     async getMessagePermalink(channelId: string, messageTs: string): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Getting permalink for message: ${messageTs} in channel: ${channelId}`);
-            const result = await this.app.client.chat.getPermalink({
-                channel: channelId,
-                message_ts: messageTs
-            });
+            const result = await callSlackApi(
+                this.app,
+                'chat.getPermalink',
+                {
+                    channel: channelId,
+                    message_ts: messageTs
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error getting permalink for message: ${messageTs} in channel: ${channelId}`, { error });
@@ -238,12 +271,16 @@ export class MessageFeatures {
     ): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Getting conversation history for channel: ${channelId}`);
-            const result = await this.app.client.conversations.history({
-                channel: channelId,
-                limit,
-                latest,
-                oldest
-            });
+            const result = await callSlackApi(
+                this.app,
+                'conversations.history',
+                {
+                    channel: channelId,
+                    limit,
+                    latest,
+                    oldest
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error getting conversation history for channel: ${channelId}`, { error });
@@ -262,11 +299,15 @@ export class MessageFeatures {
     async getThreadReplies(channelId: string, ts: string, limit: number = 100): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Getting thread replies for message: ${ts} in channel: ${channelId}`);
-            const result = await this.app.client.conversations.replies({
-                channel: channelId,
-                ts,
-                limit
-            });
+            const result = await callSlackApi(
+                this.app,
+                'conversations.replies',
+                {
+                    channel: channelId,
+                    ts,
+                    limit
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error getting thread replies for message: ${ts} in channel: ${channelId}`, { error });

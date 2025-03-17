@@ -9,12 +9,22 @@
 
 import { App } from '@slack/bolt';
 import { logger, logEmoji } from '../../../utils/logger';
+import { callSlackApi } from '../../utils/api';
 
 export class ChannelFeatures {
-    private app: App;
+    // Make app protected instead of private so it can be accessed by derived classes
+    protected app: App;
 
     constructor(app: App) {
         this.app = app;
+    }
+
+    /**
+     * Get the app instance
+     * This is needed for direct API calls with user token
+     */
+    getApp(): App {
+        return this.app;
     }
 
     /**
@@ -27,10 +37,14 @@ export class ChannelFeatures {
     async getChannelMembers(channelId: string, limit: number = 100): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Getting members for channel: ${channelId}`);
-            const result = await this.app.client.conversations.members({
-                channel: channelId,
-                limit
-            });
+            const result = await callSlackApi(
+                this.app,
+                'conversations.members',
+                {
+                    channel: channelId,
+                    limit
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error getting members for channel: ${channelId}`, { error });
@@ -47,9 +61,13 @@ export class ChannelFeatures {
     async joinChannel(channelId: string): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Joining channel: ${channelId}`);
-            const result = await this.app.client.conversations.join({
-                channel: channelId
-            });
+            const result = await callSlackApi(
+                this.app,
+                'conversations.join',
+                {
+                    channel: channelId
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error joining channel: ${channelId}`, { error });
@@ -68,11 +86,15 @@ export class ChannelFeatures {
     async createChannel(name: string, isPrivate: boolean = false, teamId?: string): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Creating ${isPrivate ? 'private' : 'public'} channel: ${name}`);
-            const result = await this.app.client.conversations.create({
-                name,
-                is_private: isPrivate,
-                team_id: teamId
-            });
+            const result = await callSlackApi(
+                this.app,
+                'conversations.create',
+                {
+                    name,
+                    is_private: isPrivate,
+                    team_id: teamId
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error creating channel: ${name}`, { error });
@@ -89,9 +111,13 @@ export class ChannelFeatures {
     async archiveChannel(channelId: string): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Archiving channel: ${channelId}`);
-            const result = await this.app.client.conversations.archive({
-                channel: channelId
-            });
+            const result = await callSlackApi(
+                this.app,
+                'conversations.archive',
+                {
+                    channel: channelId
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error archiving channel: ${channelId}`, { error });
@@ -109,10 +135,14 @@ export class ChannelFeatures {
     async inviteToChannel(channelId: string, userIds: string[]): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Inviting users to channel: ${channelId}`, { userIds });
-            const result = await this.app.client.conversations.invite({
-                channel: channelId,
-                users: userIds.join(',')
-            });
+            const result = await callSlackApi(
+                this.app,
+                'conversations.invite',
+                {
+                    channel: channelId,
+                    users: userIds.join(',')
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error inviting users to channel: ${channelId}`, { error });
@@ -135,11 +165,15 @@ export class ChannelFeatures {
     ): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Listing channels with types: ${types}`);
-            const result = await this.app.client.conversations.list({
-                limit,
-                exclude_archived: excludeArchived,
-                types
-            });
+            const result = await callSlackApi(
+                this.app,
+                'conversations.list',
+                {
+                    limit,
+                    exclude_archived: excludeArchived,
+                    types
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error listing channels`, { error });
@@ -167,12 +201,66 @@ export class ChannelFeatures {
     async getChannelInfo(channelId: string): Promise<any> {
         try {
             logger.info(`${logEmoji.slack} Getting channel info: ${channelId}`);
-            const result = await this.app.client.conversations.info({
-                channel: channelId
-            });
+            const result = await callSlackApi(
+                this.app,
+                'conversations.info',
+                {
+                    channel: channelId
+                }
+            );
             return result;
         } catch (error) {
             logger.error(`${logEmoji.error} Error getting channel info: ${channelId}`, { error });
+            throw error;
+        }
+    }
+
+    /**
+     * Search channels by name (using conversations.list with filtering)
+     * 
+     * This is a non-admin alternative to admin.conversations.search
+     * that uses the channels:read permission instead of admin permissions.
+     * 
+     * @param query The search query
+     * @param limit Maximum number of channels to return
+     * @param excludeArchived Whether to exclude archived channels
+     * @param types Types of channels to include (public_channel, private_channel, mpim, im)
+     * @returns Promise resolving to the filtered list of channels
+     */
+    async searchChannelsByName(
+        query: string,
+        limit: number = 100,
+        excludeArchived: boolean = true,
+        types: string = 'public_channel,private_channel'
+    ): Promise<any> {
+        try {
+            logger.info(`${logEmoji.slack} Searching channels with query: ${query}`);
+
+            // Get the list of channels
+            const result = await this.listChannels(limit, excludeArchived, types);
+
+            if (!result.channels || !Array.isArray(result.channels)) {
+                return { channels: [] };
+            }
+
+            // Filter channels by name
+            const queryLower = query.toLowerCase();
+            const filteredChannels = result.channels.filter((channel: any) => {
+                const name = channel.name?.toLowerCase() || '';
+                const topic = channel.topic?.value?.toLowerCase() || '';
+                const purpose = channel.purpose?.value?.toLowerCase() || '';
+
+                return name.includes(queryLower) ||
+                    topic.includes(queryLower) ||
+                    purpose.includes(queryLower);
+            });
+
+            return {
+                channels: filteredChannels,
+                total: filteredChannels.length
+            };
+        } catch (error) {
+            logger.error(`${logEmoji.error} Error searching channels with query: ${query}`, { error });
             throw error;
         }
     }

@@ -239,7 +239,65 @@ export class OpenRouterClient implements AIProvider {
             });
 
             // Format tools if functions are provided
-            const openRouterTools = functions?.map(fn => ({
+            // Only include essential functions to reduce token usage
+            let essentialFunctions: FunctionDefinition[] = [];
+
+            if (functions) {
+                const promptText = typeof prompt === 'string' ? prompt.toLowerCase() : '';
+
+                // Determine which functions to include based on the prompt
+                if (promptText.includes('meeting') && promptText.includes('summary')) {
+                    // For meeting summaries, only include search and message functions
+                    essentialFunctions = functions.filter(fn =>
+                        fn.name === 'searchChannels' ||
+                        fn.name === 'sendMessage'
+                    );
+                } else if (promptText.includes('channel') && (promptText.includes('create') || promptText.includes('new'))) {
+                    // For channel creation, include relevant functions
+                    essentialFunctions = functions.filter(fn =>
+                        fn.name === 'createChannel' ||
+                        fn.name === 'inviteToChannel' ||
+                        fn.name === 'createChannelAndInviteUsers'
+                    );
+                } else if (promptText.includes('message') || promptText.includes('send') || promptText.includes('post')) {
+                    // For sending messages
+                    essentialFunctions = functions.filter(fn =>
+                        fn.name === 'sendMessage' ||
+                        fn.name === 'sendDirectMessage' ||
+                        fn.name === 'searchChannels'
+                    );
+                } else if (promptText.includes('search')) {
+                    // For search operations
+                    essentialFunctions = functions.filter(fn =>
+                        fn.name === 'searchChannels' ||
+                        fn.name === 'searchMessages'
+                    );
+                } else if (promptText.includes('user') || promptText.includes('member')) {
+                    // For user-related operations
+                    essentialFunctions = functions.filter(fn =>
+                        fn.name === 'listUsers' ||
+                        fn.name === 'getUserInfo' ||
+                        fn.name === 'lookupUserByEmail'
+                    );
+                } else {
+                    // For other cases, include a minimal set of common functions
+                    essentialFunctions = functions.filter(fn =>
+                        ['searchChannels', 'sendMessage', 'createChannel', 'inviteToChannel'].includes(fn.name)
+                    );
+                }
+
+                // If we couldn't determine specific functions, include a minimal set
+                if (essentialFunctions.length === 0) {
+                    essentialFunctions = functions.filter(fn =>
+                        ['searchChannels', 'sendMessage'].includes(fn.name)
+                    );
+                }
+
+                // Limit to at most 5 functions to reduce token usage
+                essentialFunctions = essentialFunctions.slice(0, 5);
+            }
+
+            const openRouterTools = essentialFunctions?.map(fn => ({
                 type: 'function' as const,
                 function: {
                     name: fn.name,

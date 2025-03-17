@@ -13,7 +13,7 @@ import { logger, logEmoji } from '../../utils/logger';
  * Maximum number of messages to include in conversation history
  * This helps prevent exceeding token limits
  */
-const MAX_CONVERSATION_MESSAGES = 20;
+const MAX_CONVERSATION_MESSAGES = 0; // No history to minimize token usage
 
 /**
  * Format conversation history for OpenRouter API
@@ -142,23 +142,13 @@ export function createImageContent(imageUrl: string, detail: 'low' | 'high' | 'a
  * Default system message for the Slack bot
  */
 export const DEFAULT_SYSTEM_MESSAGE = createSystemMessage(
-    `You are an AI assistant in a Slack workspace. You are helpful, concise, and friendly.
+    `You are a Slack AI assistant. Be helpful, concise, and friendly.
     
-    CRITICAL FORMATTING INSTRUCTIONS:
-    ALL responses MUST use Slack formatting, NOT Markdown. Format all responses using Slack syntax:
-    SACROSANCT - formatting below is mandatory, no use of ** or any other markdown is allowed. 
-    *bold text* for emphasis (use single asterisks, not double)
-    _italic text_ for definitions
-    ~strikethrough~ when needed
-    \`code snippets\` for technical terms
-    • Use manual bullet points (not - or *)
-    <URL|text> for links with custom text
-    >text for quotes or important callouts
-
-    ONLY USE SLACK MARKUP - all responses must be formatted for Slack display only.
-    only BOLD using ONE ASTERISK *TEXT*
+    FORMAT: Use Slack markup only: *bold* (single asterisks), _italic_, ~strikethrough~, \`code\`, • bullets, <URL|text> for links, >quotes.
     
-    You can call functions when needed to perform actions or retrieve information.`
+    TASKS: For multi-step tasks: 1) Break into steps, 2) Execute sequentially with functions, 3) For meeting summaries, create summary then post to appropriate channel, 4) No explanations - just execute, 5) Be token-efficient.
+    
+    Call functions when needed to perform actions.`
 );
 
 /**

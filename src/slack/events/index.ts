@@ -13,7 +13,7 @@ import * as conversationUtils from '../utils/conversation';
 import * as blockKit from '../utils/block-kit';
 import { AVAILABLE_FUNCTIONS, handleFunctionCall, formatFunctionCallResult } from '../../mcp/function-calling';
 import { DEFAULT_MODEL } from '../../ai/openrouter/models';
-import { FunctionCall } from '../../ai/interfaces/provider';
+import { FunctionCall, ConversationMessage } from '../../ai/interfaces/provider';
 import { ThreadInfo } from '../utils/conversation';
 
 // Create an instance of the OpenRouter client
@@ -63,13 +63,23 @@ async function processMessageAndGenerateResponse(
         // Add the user message to the conversation context
         conversationUtils.addUserMessageToThread(threadInfo, messageText);
 
-        // Get the conversation history
-        const conversationHistory = conversationUtils.getThreadHistory(threadInfo);
+        // Get the conversation history - but only include system message and current user message
+        // to minimize token usage
+        const fullHistory = conversationUtils.getThreadHistory(threadInfo);
 
-        // Generate a response from the AI
+        // Extract only the system message and the current user message
+        const systemMessage = fullHistory.find(msg => msg.role === 'system');
+        const userMessage = fullHistory[fullHistory.length - 1]; // Last message is the current user message
+
+        // Create a minimal conversation history with just these messages
+        const minimalHistory = [];
+        if (systemMessage) minimalHistory.push(systemMessage);
+        if (userMessage) minimalHistory.push(userMessage);
+
+        // Generate a response from the AI with minimal history
         const aiResponse = await aiClient.generateResponse(
             messageText,
-            conversationHistory,
+            minimalHistory,
             AVAILABLE_FUNCTIONS
         );
 
@@ -80,7 +90,11 @@ async function processMessageAndGenerateResponse(
 
         if (aiResponse.functionCalls && aiResponse.functionCalls.length > 0) {
             // This is a function call request
-            functionResults = await processFunctionCalls(aiResponse.functionCalls);
+            functionResults = await processFunctionCalls(
+                aiResponse.functionCalls,
+                threadInfo,
+                minimalHistory
+            );
 
             // Create a more conversational response based on function results
             if (functionResults.length > 0) {
@@ -151,10 +165,17 @@ async function processMessageAndGenerateResponse(
  * Process function calls from the AI
  * 
  * @param functionCalls Array of function calls
+ * @param threadInfo Thread information for follow-up responses
+ * @param conversationHistory Current conversation history
  * @returns Promise resolving to an array of function results
  */
-async function processFunctionCalls(functionCalls: FunctionCall[]): Promise<string[]> {
+async function processFunctionCalls(
+    functionCalls: FunctionCall[],
+    threadInfo?: ThreadInfo,
+    conversationHistory?: any[]
+): Promise<string[]> {
     const results: string[] = [];
+    const functionResults: any[] = [];
 
     for (const functionCall of functionCalls) {
         try {
@@ -162,17 +183,180 @@ async function processFunctionCalls(functionCalls: FunctionCall[]): Promise<stri
 
             // Execute the function call
             const result = await handleFunctionCall(functionCall);
+            functionResults.push({ name: functionCall.name, result });
 
             // Format the result
             const formattedResult = formatFunctionCallResult(functionCall.name, result);
             results.push(formattedResult);
+
+            // Log the result for debugging
+            logger.debug(`${logEmoji.mcp} Function call result: ${JSON.stringify(result)}`);
         } catch (error) {
             logger.error(`${logEmoji.error} Error processing function call: ${functionCall.name}`, { error });
             results.push(`Error executing function ${functionCall.name}: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
+    // If we have thread info and conversation history, check if we need to continue the workflow
+    if (threadInfo && conversationHistory && functionResults.length > 0) {
+        try {
+            // Check if we need to continue the workflow based on the function results
+            const continueWorkflow = await shouldContinueWorkflow(functionResults, conversationHistory);
+
+            if (continueWorkflow) {
+                logger.info(`${logEmoji.mcp} Continuing workflow with follow-up function calls`);
+
+                // Generate a follow-up response with the function results as context
+                const followUpResponse = await generateFollowUpResponse(threadInfo, functionResults, conversationHistory);
+
+                // If the follow-up response has function calls, process them
+                if (followUpResponse.functionCalls && followUpResponse.functionCalls.length > 0) {
+                    const followUpResults = await processFunctionCalls(
+                        followUpResponse.functionCalls,
+                        threadInfo,
+                        [...conversationHistory, { role: 'assistant', content: JSON.stringify(functionResults) }]
+                    );
+
+                    // Add the follow-up results to the original results
+                    results.push(...followUpResults);
+                }
+            }
+        } catch (error) {
+            logger.error(`${logEmoji.error} Error in workflow continuation`, { error });
+        }
+    }
+
     return results;
+}
+
+/**
+ * Determine if we should continue the workflow based on function results
+ * 
+ * @param functionResults Array of function results
+ * @param conversationHistory Current conversation history
+ * @returns Promise resolving to a boolean indicating if we should continue
+ */
+async function shouldContinueWorkflow(functionResults: any[], conversationHistory: any[]): Promise<boolean> {
+    // Check if any of the function calls are part of a multi-step workflow
+    const multiStepWorkflows = [
+        // Search followed by sending a message
+        { first: 'searchChannels', next: 'sendMessage' },
+        // Create channel followed by inviting users
+        { first: 'createChannel', next: 'inviteToChannel' },
+        // Any function call that might need a follow-up
+        { first: 'searchChannels', next: null },
+        { first: 'createChannel', next: null }
+    ];
+
+    // Check if the last function call matches the first step of any workflow
+    const lastFunctionCall = functionResults[functionResults.length - 1];
+
+    if (!lastFunctionCall) return false;
+
+    // Check if this function is part of a known workflow
+    const matchingWorkflow = multiStepWorkflows.find(workflow =>
+        workflow.first === lastFunctionCall.name
+    );
+
+    if (!matchingWorkflow) return false;
+
+    // If we have a specific next step, we'll continue
+    if (matchingWorkflow.next) return true;
+
+    // For general cases, analyze the conversation to see if it implies a multi-step task
+    const userMessages = conversationHistory
+        .filter((msg: any) => msg.role === 'user')
+        .map((msg: any) => typeof msg.content === 'string' ? msg.content : '');
+
+    const lastUserMessage = userMessages[userMessages.length - 1] || '';
+
+    // Check for phrases that suggest a multi-step task
+    const multiStepPhrases = [
+        'then', 'after', 'next', 'finally', 'and',
+        'post', 'send', 'share', 'create', 'invite',
+        'summary', 'summarize', 'channel', 'meeting'
+    ];
+
+    // Check for specific multi-step task patterns
+    if (lastUserMessage.toLowerCase().includes('meeting') &&
+        lastUserMessage.toLowerCase().includes('summary')) {
+        return true;
+    }
+
+    // Check for other multi-step phrases
+    return multiStepPhrases.some(phrase =>
+        lastUserMessage.toLowerCase().includes(phrase.toLowerCase())
+    );
+}
+
+/**
+ * Generate a follow-up response based on function results
+ * 
+ * @param threadInfo Thread information
+ * @param functionResults Array of function results
+ * @param conversationHistory Current conversation history
+ * @returns Promise resolving to the AI response
+ */
+async function generateFollowUpResponse(
+    threadInfo: ThreadInfo,
+    functionResults: any[],
+    conversationHistory: any[]
+): Promise<any> {
+    try {
+        // Create a concise prompt with minimal function result data
+        // Only include essential information from the function results
+        const functionResultsText = functionResults.map(fr => {
+            // Extract only the essential information
+            const essentialResult = fr.result.success ?
+                { success: true, channels: fr.result.channels, message: fr.result.message } :
+                { success: false, error: fr.result.error };
+
+            return `${fr.name}: ${JSON.stringify(essentialResult)}`;
+        }).join('; ');
+
+        const prompt = `Results: ${functionResultsText}. What's the next step?`;
+
+        // Add a concise system message to guide the AI
+        const systemMessage = {
+            role: 'system',
+            content: `Complete multi-step task. For meeting summaries: 1) Create summary from transcript, 2) Post to appropriate channel with sendMessage. Be concise, focus on decisions and action items. No explanations - just execute functions.`
+        };
+
+        // Create a minimal conversation history with just the system message and user prompt
+        // This significantly reduces token usage
+        const updatedHistory: ConversationMessage[] = [
+            {
+                role: 'system',
+                content: `Complete multi-step task. For meeting summaries: 1) Create summary from transcript, 2) Post to appropriate channel with sendMessage. Be concise, focus on decisions and action items. No explanations - just execute functions.`,
+                timestamp: new Date().toISOString()
+            },
+            {
+                role: 'user',
+                content: prompt,
+                timestamp: new Date().toISOString()
+            }
+        ];
+
+        // Determine which functions to include based on the first function call
+        let relevantFunctions = AVAILABLE_FUNCTIONS;
+
+        // If the first function was searchChannels, only include sendMessage for the follow-up
+        if (functionResults.length > 0 && functionResults[0].name === 'searchChannels') {
+            relevantFunctions = AVAILABLE_FUNCTIONS.filter(fn =>
+                fn.name === 'sendMessage'
+            );
+        }
+
+        // Generate a response from the AI with only relevant functions
+        return await aiClient.generateResponse(
+            prompt,
+            updatedHistory,
+            relevantFunctions.slice(0, 3) // Limit to at most 3 functions
+        );
+    } catch (error) {
+        logger.error(`${logEmoji.error} Error generating follow-up response`, { error });
+        return { content: '', functionCalls: [] };
+    }
 }
 
 // Handle message events

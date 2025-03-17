@@ -13,6 +13,7 @@ import { logger } from '../utils/logger';
 export interface EnvironmentVariables {
     // Slack
     SLACK_BOT_TOKEN: string;
+    SLACK_USER_TOKEN: string;
     SLACK_SIGNING_SECRET: string;
     SLACK_APP_TOKEN: string;
 
@@ -64,6 +65,7 @@ export function loadEnvironment(): EnvironmentVariables {
     return {
         // Slack
         SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN!,
+        SLACK_USER_TOKEN: process.env.SLACK_USER_TOKEN!,
         SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET!,
         SLACK_APP_TOKEN: process.env.SLACK_APP_TOKEN!,
 

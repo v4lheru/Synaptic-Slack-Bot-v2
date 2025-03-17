@@ -7,6 +7,8 @@
 
 import { getFeatures, SlackFeatures } from '../../slack/features';
 import { logger, logEmoji } from '../../utils/logger';
+import { env } from '../../config/environment';
+import { callSlackApi } from '../../slack/utils/api';
 
 /**
  * Channel-related actions
@@ -449,15 +451,98 @@ export async function searchChannels(
 ): Promise<any> {
     try {
         logger.info(`${logEmoji.ai} AI requested to search channels with query: ${query}`);
+
+        // First try using the non-admin method
+        try {
+            return await searchChannelsByName(query, limit);
+        } catch (error) {
+            // If non-admin method fails, try admin method as fallback
+            logger.warn(`${logEmoji.warning} Non-admin channel search failed, trying admin method as fallback`, { error });
+
+            const features = getFeatures();
+            const result = await features.admin.searchChannels(query, teamIds, limit);
+            return {
+                success: true,
+                channels: result.channels,
+                message: `Successfully found ${result.channels?.length || 0} channels matching "${query}"`
+            };
+        }
+    } catch (error) {
+        logger.error(`${logEmoji.error} Error searching channels with query: ${query}`, { error });
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error)
+        };
+    }
+}
+
+/**
+ * Search for channels by name (non-admin method)
+ * 
+ * This uses the conversations.list API with the channels:read permission
+ * and filters the results client-side.
+ * 
+ * @param query The search query
+ * @param limit Maximum number of results to return
+ * @returns Promise resolving to the search result
+ */
+export async function searchChannelsByName(
+    query: string,
+    limit: number = 100
+): Promise<any> {
+    try {
+        logger.info(`${logEmoji.ai} AI requested to search channels by name with query: ${query}`);
         const features = getFeatures();
-        const result = await features.admin.searchChannels(query, teamIds, limit);
+
+        // Try with user token first if available
+        if (env.SLACK_USER_TOKEN) {
+            try {
+                logger.info(`${logEmoji.ai} Attempting to search channels with user token`);
+                // Get the app instance to pass the useUserToken option
+                const app = features.channels.getApp();
+                const result = await callSlackApi(
+                    app,
+                    'conversations.list',
+                    {
+                        limit,
+                        exclude_archived: true,
+                        types: 'public_channel,private_channel'
+                    },
+                    { useUserToken: true }
+                );
+
+                // Filter channels by name
+                const queryLower = query.toLowerCase();
+                const filteredChannels = result.channels.filter((channel: any) => {
+                    const name = channel.name?.toLowerCase() || '';
+                    const topic = channel.topic?.value?.toLowerCase() || '';
+                    const purpose = channel.purpose?.value?.toLowerCase() || '';
+
+                    return name.includes(queryLower) ||
+                        topic.includes(queryLower) ||
+                        purpose.includes(queryLower);
+                });
+
+                return {
+                    success: true,
+                    channels: filteredChannels,
+                    message: `Successfully found ${filteredChannels.length} channels matching "${query}" using user token`
+                };
+            } catch (error) {
+                logger.warn(`${logEmoji.warning} Failed to search channels with user token, falling back to bot token`, { error });
+                // Fall back to bot token method
+            }
+        }
+
+        // Use the regular method with bot token
+        const result = await features.channels.searchChannelsByName(query, limit);
         return {
             success: true,
             channels: result.channels,
             message: `Successfully found ${result.channels?.length || 0} channels matching "${query}"`
         };
     } catch (error) {
-        logger.error(`${logEmoji.error} Error searching channels with query: ${query}`, { error });
+        logger.error(`${logEmoji.error} Error searching channels by name with query: ${query}`, { error });
         return {
             success: false,
             error: error instanceof Error ? error.message : String(error)
@@ -732,6 +817,7 @@ export async function getChannelMembers(channelId: string): Promise<any> {
     }
 }
 
+
 /**
  * Complex actions that combine multiple operations
  */
@@ -771,59 +857,6 @@ export async function createChannelAndInviteUsers(
         };
     } catch (error) {
         logger.error(`${logEmoji.error} Error creating channel and inviting users: ${name}`, { error });
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : String(error)
-        };
-    }
-}
-
-/**
- * Send a message to multiple channels
- * 
- * @param channelIds Array of channel IDs
- * @param text The message text
- * @returns Promise resolving to the result
- */
-export async function sendMessageToMultipleChannels(channelIds: string[], text: string): Promise<any> {
-    try {
-        logger.info(`${logEmoji.ai} AI requested to send message to multiple channels`);
-
-        const results = [];
-        const failures = [];
-
-        for (const channelId of channelIds) {
-            try {
-                const result = await sendMessage(channelId, text);
-                if (result.success) {
-                    results.push({
-                        channelId,
-                        messageTs: result.messageTs
-                    });
-                } else {
-                    failures.push({
-                        channelId,
-                        error: result.error
-                    });
-                }
-            } catch (error) {
-                failures.push({
-                    channelId,
-                    error: error instanceof Error ? error.message : String(error)
-                });
-            }
-        }
-
-        return {
-            success: failures.length === 0,
-            successCount: results.length,
-            failureCount: failures.length,
-            results,
-            failures,
-            message: `Successfully sent message to ${results.length} channel(s)${failures.length > 0 ? `, failed for ${failures.length} channel(s)` : ''}`
-        };
-    } catch (error) {
-        logger.error(`${logEmoji.error} Error sending message to multiple channels`, { error });
         return {
             success: false,
             error: error instanceof Error ? error.message : String(error)
